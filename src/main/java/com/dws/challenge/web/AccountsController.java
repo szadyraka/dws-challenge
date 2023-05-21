@@ -1,6 +1,8 @@
 package com.dws.challenge.web;
 
 import com.dws.challenge.domain.Account;
+import com.dws.challenge.dto.AccountTransferMoneyDto;
+import com.dws.challenge.exception.AccountException;
 import com.dws.challenge.exception.DuplicateAccountIdException;
 import com.dws.challenge.service.AccountsService;
 import lombok.extern.slf4j.Slf4j;
@@ -22,30 +24,44 @@ import javax.validation.Valid;
 @Slf4j
 public class AccountsController {
 
-  private final AccountsService accountsService;
+    private final AccountsService accountsService;
 
-  @Autowired
-  public AccountsController(AccountsService accountsService) {
-    this.accountsService = accountsService;
-  }
-
-  @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<Object> createAccount(@RequestBody @Valid Account account) {
-    log.info("Creating account {}", account);
-
-    try {
-    this.accountsService.createAccount(account);
-    } catch (DuplicateAccountIdException daie) {
-      return new ResponseEntity<>(daie.getMessage(), HttpStatus.BAD_REQUEST);
+    @Autowired
+    public AccountsController(AccountsService accountsService) {
+        this.accountsService = accountsService;
     }
 
-    return new ResponseEntity<>(HttpStatus.CREATED);
-  }
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Object> createAccount(@RequestBody @Valid Account account) {
+        log.info("Creating account {}", account);
 
-  @GetMapping(path = "/{accountId}")
-  public Account getAccount(@PathVariable String accountId) {
-    log.info("Retrieving account for id {}", accountId);
-    return this.accountsService.getAccount(accountId);
-  }
+        try {
+            this.accountsService.createAccount(account);
+        } catch (DuplicateAccountIdException daie) {
+            return new ResponseEntity<>(daie.getMessage(), HttpStatus.BAD_REQUEST);
+        }
+
+        return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
+    @GetMapping(path = "/{accountId}")
+    public Account getAccount(@PathVariable String accountId) {
+        log.info("Retrieving account for id {}", accountId);
+        return this.accountsService.getAccount(accountId);
+    }
+
+    @PostMapping(value = "/{accountId}/transfer", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Object> transfer(@PathVariable("accountId") String sourceAccountId,
+                                           @RequestBody @Valid AccountTransferMoneyDto request) {
+        log.info("Transfer money details: {}", request);
+        try {
+            accountsService.transfer(sourceAccountId, request.getTargetAccountId(), request.getAmount());
+        } catch (AccountException ex) {
+            return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (Exception ex) {
+            return new ResponseEntity<>(ex.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 
 }
